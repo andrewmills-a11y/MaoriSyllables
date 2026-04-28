@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phonetic Roller</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            text-align: center;
+            background: #ffffff;
+            padding: 2.5rem;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            width: 380px;
+        }
+
+        .mode-switch {
+            display: inline-flex;
+            background: #dfe6e9;
+            padding: 5px;
+            border-radius: 50px;
+            margin-bottom: 30px;
+        }
+
+        .mode-btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: transparent;
+            color: #636e72;
+            outline: none;
+        }
+
+        .mode-btn.active {
+            background: #ffffff;
+            color: #2d3436;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .dice-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 40px;
+            height: 110px;
+        }
+
+        .die {
+            width: 110px;
+            height: 110px;
+            background: #fff;
+            border: 5px solid #2d3436;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            font-weight: 900;
+            box-sizing: border-box;
+        }
+
+        #die1 { border-radius: 20px 0 0 20px; border-right: 2.5px solid #2d3436; }
+        #die2 { border-radius: 0 20px 20px 0; border-left: 2.5px solid #2d3436; }
+
+        #macron-display {
+            height: 80px;
+            margin-top: 10px;
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #6c5ce7;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .glow-anim {
+            animation: glowPulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes glowPulse {
+            0% { text-shadow: 0 0 5px rgba(108, 92, 231, 0.2); transform: scale(1); }
+            50% { text-shadow: 0 0 20px rgba(108, 92, 231, 0.8); transform: scale(1.1); }
+            100% { text-shadow: 0 0 5px rgba(108, 92, 231, 0.2); transform: scale(1); }
+        }
+
+        .roll-left { animation: joinLeft 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+        .roll-right { animation: joinRight 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+
+        @keyframes joinLeft {
+            0% { transform: translateX(-150px) rotate(-360deg); opacity: 0; }
+            100% { transform: translateX(0) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes joinRight {
+            0% { transform: translateX(150px) rotate(360deg); opacity: 0; }
+            100% { transform: translateX(0) rotate(0deg); opacity: 1; }
+        }
+
+        #rollBtn {
+            padding: 18px 45px;
+            width: 100%;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            background-color: #6c5ce7;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 5px 0 #4834d4;
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            outline: none;
+        }
+
+        #rollBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #4834d4; }
+        #rollBtn:disabled { background-color: #b2bec3; box-shadow: 0 5px 0 #636e72; }
+        
+        .hint {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #b2bec3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="mode-switch">
+        <button id="vBtn" class="mode-btn active" onclick="setMode('vowel')">Vowels</button>
+        <button id="cBtn" class="mode-btn" onclick="setMode('consonant')">Consonants</button>
+    </div>
+
+    <div class="dice-box">
+        <div id="die1" class="die">A</div>
+        <div id="die2" class="die">E</div>
+    </div>
+
+    <div id="macron-display">Ā</div>
+
+    <button id="rollBtn" onclick="rollDice()">Roll Dice</button>
+    <div class="hint">Press Enter or Space to roll</div>
+</div>
+
+<script>
+    const vowels = ['a', 'e', 'i', 'o', 'u'];
+    const macrons = { 'a': 'Ā', 'e': 'Ē', 'i': 'Ī', 'o': 'Ō', 'u': 'Ū' };
+    const consonants = ['h', 'k', 'm', 'n', 'p', 'r', 't', 'w', 'wh', 'ng'];
+    
+    let currentMode = 'vowel';
+    let vowelHistory = [];
+    let consonantHistory = [];
+
+    const die1 = document.getElementById('die1');
+    const die2 = document.getElementById('die2');
+    const macronDiv = document.getElementById('macron-display');
+    const btn = document.getElementById('rollBtn');
+
+    // Handle Keyboard Inputs
+    window.addEventListener('keydown', (e) => {
+        if ((e.key === ' ' || e.key === 'Enter') && !btn.disabled) {
+            if (e.key === ' ') e.preventDefault(); // Stop page scroll
+            rollDice();
+        }
+    });
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('vBtn').classList.toggle('active', mode === 'vowel');
+        document.getElementById('cBtn').classList.toggle('active', mode === 'consonant');
+        macronDiv.style.opacity = "0";
+        die1.innerText = mode === 'vowel' ? 'A' : 'H';
+        die2.innerText = 'E';
+    }
+
+    function rollDice() {
+        btn.disabled = true;
+        macronDiv.style.opacity = "0";
+        macronDiv.classList.remove('glow-anim');
+
+        die1.classList.remove('roll-left');
+        die2.classList.remove('roll-right');
+        void die1.offsetWidth; 
+        void die2.offsetWidth;
+        die1.classList.add('roll-left');
+        die2.classList.add('roll-right');
+
+        const leftSource = currentMode === 'vowel' ? vowels : consonants;
+        
+        let shuffleTime = 0;
+        const shuffle = setInterval(() => {
+            die1.innerText = leftSource[Math.floor(Math.random() * leftSource.length)].toUpperCase();
+            die2.innerText = vowels[Math.floor(Math.random() * vowels.length)].toUpperCase();
+            shuffleTime++;
+            if (shuffleTime > 8) clearInterval(shuffle);
+        }, 50);
+
+        setTimeout(() => {
+            const result = generateUniqueResult();
+            const char1 = result[0];
+            const char2 = result[1];
+
+            die1.innerText = char1.toUpperCase();
+            die2.innerText = char2.toUpperCase();
+            
+            if (char1 === char2) {
+                macronDiv.innerText = macrons[char1];
+                macronDiv.style.opacity = "1";
+                macronDiv.classList.add('glow-anim');
+            }
+
+            btn.disabled = false;
+        }, 500);
+    }
+
+    function generateUniqueResult() {
+        let candidate;
+        let isRepeated = true;
+        const leftSource = currentMode === 'vowel' ? vowels : consonants;
+        const history = currentMode === 'vowel' ? vowelHistory : consonantHistory;
+        
+        let attempts = 0;
+        while (isRepeated && attempts < 100) {
+            let v1 = leftSource[Math.floor(Math.random() * leftSource.length)];
+            let v2 = vowels[Math.floor(Math.random() * vowels.length)];
+            candidate = [v1, v2];
+            const pairKey = candidate.join('');
+            isRepeated = history.includes(pairKey);
+            attempts++;
+        }
+
+        history.push(candidate.join(''));
+        if (history.length > 19) history.shift();
+        
+        return candidate;
+    }
+</script>
+
+</body>
+</html>
